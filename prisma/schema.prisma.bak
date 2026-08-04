@@ -1,0 +1,1270 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AccountingEntry {
+  id          String   @id
+  type        String
+  category    String
+  amount      Float
+  description String?
+  referenceId String?
+  createdAt   DateTime @default(now())
+}
+
+model Attendance {
+  id         String    @id
+  employeeId String
+  date       DateTime
+  punchIn    DateTime?
+  punchOut   DateTime?
+  status     String    @default("PRESENT")
+  deviceId   String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime
+  Employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, date])
+}
+
+model AuditLog {
+  id        String   @id
+  action    String
+  entity    String
+  entityId  String
+  userId    String?
+  details   String?
+  createdAt DateTime @default(now())
+  User      User?    @relation(fields: [userId], references: [id])
+}
+
+model BillingHistory {
+  id          String   @id
+  tenantId    String
+  amount      Float
+  status      String
+  paymentDate DateTime @default(now())
+  invoiceUrl  String?
+  Tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model Branch {
+  id                                                 String              @id
+  name                                               String              @unique
+  location                                           String?
+  CustomOrder                                        CustomOrder[]
+  GoldExchange                                       GoldExchange[]
+  Inventory                                          Inventory[]
+  InventoryAudit                                     InventoryAudit[]
+  InventoryMovement                                  InventoryMovement[]
+  Product                                            Product[]
+  PurchaseOrder                                      PurchaseOrder[]
+  SaleInvoice                                        SaleInvoice[]
+  StockAdjustment                                    StockAdjustment[]
+  StockTransfer_StockTransfer_destBranchIdToBranch   StockTransfer[]     @relation("StockTransfer_destBranchIdToBranch")
+  StockTransfer_StockTransfer_sourceBranchIdToBranch StockTransfer[]     @relation("StockTransfer_sourceBranchIdToBranch")
+}
+
+model CustomOrder {
+  id                       String                     @id
+  orderNumber              String                     @unique
+  customerId               String
+  branchId                 String?
+  status                   String                     @default("DRAFT")
+  description              String?
+  targetDate               DateTime?
+  deliveredDate            DateTime?
+  estimatedTotal           Float                      @default(0)
+  advancePaid              Float                      @default(0)
+  balance                  Float                      @default(0)
+  productId                String?                    @unique
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime
+  Branch                   Branch?                    @relation(fields: [branchId], references: [id])
+  Customer                 Customer                   @relation(fields: [customerId], references: [id])
+  Product                  Product?                   @relation(fields: [productId], references: [id])
+  CustomOrderApproval      CustomOrderApproval[]
+  CustomOrderEmployee      CustomOrderEmployee[]
+  CustomOrderImage         CustomOrderImage[]
+  CustomOrderItem          CustomOrderItem[]
+  CustomOrderMaterial      CustomOrderMaterial[]
+  CustomOrderPayment       CustomOrderPayment[]
+  CustomOrderQuotation     CustomOrderQuotation[]
+  CustomOrderStatusHistory CustomOrderStatusHistory[]
+  CustomOrderTimeline      CustomOrderTimeline[]
+}
+
+model CustomOrderApproval {
+  id            String      @id
+  customOrderId String
+  stage         String
+  status        String
+  approvedBy    String?
+  remarks       String?
+  approvedAt    DateTime?
+  createdAt     DateTime    @default(now())
+  CustomOrder   CustomOrder @relation(fields: [customOrderId], references: [id], onDelete: Cascade)
+}
+
+model CustomOrderEmployee {
+  id            String      @id
+  customOrderId String
+  employeeId    String
+  role          String
+  assignedAt    DateTime    @default(now())
+  CustomOrder   CustomOrder @relation(fields: [customOrderId], references: [id], onDelete: Cascade)
+  Employee      Employee    @relation(fields: [employeeId], references: [id])
+}
+
+model CustomOrderImage {
+  id            String      @id
+  customOrderId String
+  url           String
+  fileType      String?
+  fileName      String?
+  uploadedBy    String?
+  createdAt     DateTime    @default(now())
+  CustomOrder   CustomOrder @relation(fields: [customOrderId], references: [id], onDelete: Cascade)
+}
+
+model CustomOrderItem {
+  id             String      @id
+  customOrderId  String
+  itemName       String
+  category       String?
+  description    String?
+  metal          String?
+  purity         String?
+  expectedWeight Float?
+  diamondWeight  Float?
+  stoneWeight    Float?
+  makingCharges  Float?
+  totalPrice     Float?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime
+  CustomOrder    CustomOrder @relation(fields: [customOrderId], references: [id], onDelete: Cascade)
+}
+
+model CustomOrderMaterial {
+  id            String      @id
+  customOrderId String
+  materialType  String
+  weight        Float
+  quantity      Int         @default(1)
+  purity        String?
+  allocatedAt   DateTime    @default(now())
+  CustomOrder   CustomOrder @relation(fields: [customOrderId], references: [id], onDelete: Cascade)
+}
+
+model CustomOrderPayment {
+  id            String      @id
+  customOrderId String
+  amount        Float
+  method        String
+  reference     String?
+  type          String      @default("ADVANCE")
+  paymentDate   DateTime    @default(now())
+  createdAt     DateTime    @default(now())
+  CustomOrder   CustomOrder @relation(fields: [customOrderId], references: [id], onDelete: Cascade)
+}
+
+model CustomOrderQuotation {
+  id            String      @id
+  customOrderId String
+  goldWeight    Float?
+  diamondWeight Float?
+  stoneWeight   Float?
+  makingCharges Float?
+  labourCharges Float?
+  designCharges Float?
+  gstAmount     Float?
+  discount      Float?
+  advanceAmount Float?
+  grandTotal    Float
+  pdfUrl        String?
+  status        String      @default("GENERATED")
+  createdAt     DateTime    @default(now())
+  CustomOrder   CustomOrder @relation(fields: [customOrderId], references: [id], onDelete: Cascade)
+}
+
+model CustomOrderStatusHistory {
+  id            String      @id
+  customOrderId String
+  fromStatus    String?
+  toStatus      String
+  changedBy     String?
+  remarks       String?
+  changedAt     DateTime    @default(now())
+  CustomOrder   CustomOrder @relation(fields: [customOrderId], references: [id], onDelete: Cascade)
+}
+
+model CustomOrderTimeline {
+  id            String      @id
+  customOrderId String
+  action        String
+  remarks       String?
+  performedBy   String?
+  createdAt     DateTime    @default(now())
+  CustomOrder   CustomOrder @relation(fields: [customOrderId], references: [id], onDelete: Cascade)
+}
+
+model Customer {
+  id                 String               @id
+  customerId         String               @unique
+  name               String
+  mobile             String
+  email              String?
+  address            String?
+  gstNumber          String?
+  aadhaar            String?
+  pan                String?
+  birthday           DateTime?
+  anniversary        DateTime?
+  notes              String?
+  tier               String               @default("Silver")
+  loyaltyPoints      Int                  @default(0)
+  outstandingBalance Float                @default(0)
+  totalSpent         Float                @default(0)
+  lastVisit          DateTime             @default(now())
+  isDeleted          Boolean              @default(false)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  CustomOrder        CustomOrder[]
+  GoldExchange       GoldExchange[]
+  LoyaltyTransaction LoyaltyTransaction[]
+  RepairJob          RepairJob[]
+  SaleInvoice        SaleInvoice[]
+}
+
+model Employee {
+  id                  String                @id
+  employeeId          String                @unique
+  name                String
+  mobile              String
+  email               String?
+  role                String
+  department          String?
+  isActive            Boolean               @default(true)
+  joinDate            DateTime              @default(now())
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  baseSalary          Float                 @default(0)
+  biometricId         String?               @unique
+  Attendance          Attendance[]
+  CustomOrderEmployee CustomOrderEmployee[]
+  Leave               Leave[]
+  Payroll             Payroll[]
+  PerformanceReview   PerformanceReview[]
+  RepairJob           RepairJob[]
+}
+
+model ExchangePayment {
+  id           String       @id
+  exchangeId   String
+  amount       Float
+  method       String
+  reference    String?
+  type         String       @default("REFUND")
+  createdAt    DateTime     @default(now())
+  GoldExchange GoldExchange @relation(fields: [exchangeId], references: [id], onDelete: Cascade)
+}
+
+model FeatureFlag {
+  id               String           @id
+  planId           String
+  featureKey       String
+  isEnabled        Boolean          @default(true)
+  SubscriptionPlan SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+}
+
+model GoldExchange {
+  id                  String             @id
+  exchangeNumber      String             @unique
+  customerId          String
+  status              String             @default("DRAFT")
+  remarks             String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime
+  approvedBy          String?
+  balanceRefund       Float              @default(0)
+  branchId            String?
+  createdBy           String?
+  linkedSaleInvoiceId String?
+  totalExchangeValue  Float              @default(0)
+  totalGrossWeight    Float              @default(0)
+  totalNetWeight      Float              @default(0)
+  ExchangePayment     ExchangePayment[]
+  Branch              Branch?            @relation(fields: [branchId], references: [id])
+  Customer            Customer           @relation(fields: [customerId], references: [id])
+  SaleInvoice         SaleInvoice?       @relation(fields: [linkedSaleInvoiceId], references: [id])
+  GoldExchangeItem    GoldExchangeItem[]
+  GoldPurityTest      GoldPurityTest[]
+  GoldReceipt         GoldReceipt[]
+  GoldValuation       GoldValuation[]
+}
+
+model GoldExchangeItem {
+  id             String       @id
+  exchangeId     String
+  description    String?
+  category       String
+  grossWeight    Float
+  stoneWeight    Float        @default(0)
+  netWeight      Float
+  hallmarkNumber String?
+  itemName       String
+  metalType      String
+  purity         String?
+  quantity       Int          @default(1)
+  GoldExchange   GoldExchange @relation(fields: [exchangeId], references: [id], onDelete: Cascade)
+}
+
+model GoldPurityTest {
+  id            String       @id
+  exchangeId    String
+  purityPercent Float
+  karat         String
+  testMethod    String
+  testedBy      String?
+  notes         String?
+  createdAt     DateTime     @default(now())
+  GoldExchange  GoldExchange @relation(fields: [exchangeId], references: [id], onDelete: Cascade)
+}
+
+model GoldReceipt {
+  id            String       @id
+  receiptNumber String       @unique
+  exchangeId    String
+  pdfUrl        String?
+  issuedAt      DateTime     @default(now())
+  GoldExchange  GoldExchange @relation(fields: [exchangeId], references: [id], onDelete: Cascade)
+}
+
+model GoldValuation {
+  id                 String       @id
+  exchangeId         String
+  currentGoldRate    Float
+  meltingLossPct     Float        @default(0)
+  deductionPct       Float        @default(0)
+  stoneDeduction     Float        @default(0)
+  labourDeduction    Float        @default(0)
+  finalGoldWeight    Float
+  finalExchangeValue Float
+  createdAt          DateTime     @default(now())
+  GoldExchange       GoldExchange @relation(fields: [exchangeId], references: [id], onDelete: Cascade)
+}
+
+model Inventory {
+  id             String   @id
+  productId      String
+  branchId       String?
+  quantity       Int      @default(0)
+  availableStock Int      @default(0)
+  grossWeight    Float    @default(0)
+  lastUpdated    DateTime @default(now())
+  maximumStock   Int      @default(100)
+  minimumStock   Int      @default(5)
+  netWeight      Float    @default(0)
+  reservedStock  Int      @default(0)
+  status         String   @default("IN_STOCK")
+  Branch         Branch?  @relation(fields: [branchId], references: [id])
+  Product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model InventoryAudit {
+  id                 String               @id
+  auditNumber        String               @unique
+  branchId           String?
+  auditDate          DateTime             @default(now())
+  status             String               @default("DRAFT")
+  remarks            String?
+  completedBy        String?
+  createdAt          DateTime             @default(now())
+  Branch             Branch?              @relation(fields: [branchId], references: [id])
+  InventoryAuditItem InventoryAuditItem[]
+}
+
+model InventoryAuditItem {
+  id               String         @id
+  auditId          String
+  productId        String
+  expectedQuantity Int
+  actualQuantity   Int
+  difference       Int            @default(0)
+  remarks          String?
+  InventoryAudit   InventoryAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  Product          Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model InventoryMovement {
+  id            String   @id
+  productId     String
+  branchId      String?
+  type          String
+  quantity      Int      @default(0)
+  weight        Float    @default(0)
+  previousStock Int      @default(0)
+  currentStock  Int      @default(0)
+  referenceId   String?
+  reason        String?
+  userId        String?
+  createdAt     DateTime @default(now())
+  Branch        Branch?  @relation(fields: [branchId], references: [id])
+  Product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model JobMaterial {
+  id               String           @id
+  jobId            String
+  type             String
+  materialName     String
+  weight           Float
+  quantity         Int?             @default(1)
+  purity           String?
+  issuedDate       DateTime         @default(now())
+  notes            String?
+  ManufacturingJob ManufacturingJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+}
+
+model JournalEntry {
+  id          String        @id
+  entryNumber String        @unique
+  date        DateTime      @default(now())
+  reference   String?
+  narration   String
+  totalAmount Float         @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime
+  JournalLine JournalLine[]
+}
+
+model JournalLine {
+  id            String        @id
+  entryId       String
+  accountId     String
+  type          String
+  amount        Float
+  createdAt     DateTime      @default(now())
+  LedgerAccount LedgerAccount @relation(fields: [accountId], references: [id])
+  JournalEntry  JournalEntry  @relation(fields: [entryId], references: [id], onDelete: Cascade)
+}
+
+model Karigar {
+  id               String             @id
+  karigarId        String             @unique
+  name             String
+  mobile           String
+  type             String             @default("INTERNAL")
+  specialty        String?
+  address          String?
+  balance          Float              @default(0)
+  isActive         Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  ManufacturingJob ManufacturingJob[]
+
+  KarigarAssignment    KarigarAssignment[]
+}
+
+model Leave {
+  id         String   @id
+  employeeId String
+  type       String
+  startDate  DateTime
+  endDate    DateTime
+  reason     String?
+  status     String   @default("PENDING")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime
+  Employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+}
+
+model LedgerAccount {
+  id          String        @id
+  code        String        @unique
+  name        String
+  type        String
+  group       String?
+  balance     Float         @default(0)
+  isSystem    Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime
+  JournalLine JournalLine[]
+}
+
+model LowStockRule {
+  id           String  @id
+  productId    String  @unique
+  minimumStock Int     @default(5)
+  maximumStock Int     @default(100)
+  safetyStock  Int     @default(10)
+  notifyEmail  String?
+  isActive     Boolean @default(true)
+  Product      Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model LoyaltyTransaction {
+  id          String   @id
+  customerId  String
+  points      Int
+  type        String
+  description String
+  createdAt   DateTime @default(now())
+  Customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+model ManufacturingJob {
+  id               String        @id
+  jobNumber        String        @unique
+  karigarId        String
+  productName      String
+  category         String
+  metal            String?
+  purity           String?
+  expectedWeight   Float?
+  quantity         Int           @default(1)
+  status           String        @default("ASSIGNED")
+  startDate        DateTime      @default(now())
+  expectedDate     DateTime?
+  completedDate    DateTime?
+  qcStatus         String        @default("PENDING")
+  qcNotes          String?
+  qcBy             String?
+  finalGrossWeight Float?
+  finalNetWeight   Float?
+  finalStoneWeight Float?
+  makingCharge     Float?        @default(0)
+  wastage          Float?        @default(0)
+  productId        String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime
+  JobMaterial      JobMaterial[]
+  Karigar          Karigar       @relation(fields: [karigarId], references: [id])
+  Product          Product?      @relation(fields: [productId], references: [id])
+}
+
+model NotificationLog {
+  id          String   @id
+  targetPhone String?
+  targetEmail String?
+  type        String
+  channel     String
+  message     String
+  status      String   @default("SENT")
+  createdAt   DateTime @default(now())
+}
+
+model Payroll {
+  id          String    @id
+  employeeId  String
+  month       Int
+  year        Int
+  basicSalary Float
+  incentives  Float     @default(0)
+  deductions  Float     @default(0)
+  netSalary   Float
+  status      String    @default("PENDING")
+  paidDate    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime
+  Employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, month, year])
+}
+
+model PerformanceReview {
+  id         String   @id
+  employeeId String
+  reviewDate DateTime @default(now())
+  rating     Int
+  comments   String?
+  reviewer   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime
+  Employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+}
+
+model Product {
+  id                 String               @id
+  sku                String               @unique
+  barcode            String               @unique
+  qrCode             String               @unique
+  name               String
+  category           String
+  metal              String
+  purity             String
+  grossWeight        Float
+  netWeight          Float
+  stoneWeight        Float
+  wastage            Float
+  makingCharges      Float
+  hsnCode            String?
+  gst                Float
+  images             String
+  certificateNumber  String?
+  hallmarkNumber     String?
+  description        String?
+  status             String               @default("Available")
+  isDeleted          Boolean              @default(false)
+  price              Float
+  branchId           String?
+  vendorId           String?
+  stock              Int                  @default(0)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  CustomOrder        CustomOrder?
+  Inventory          Inventory[]
+  InventoryAuditItem InventoryAuditItem[]
+  InventoryMovement  InventoryMovement[]
+  LowStockRule       LowStockRule?
+  ManufacturingJob   ManufacturingJob[]
+  Branch             Branch?              @relation(fields: [branchId], references: [id])
+  Vendor             Vendor?              @relation(fields: [vendorId], references: [id])
+  PurchaseOrderItem  PurchaseOrderItem[]
+  PurchaseReturnItem PurchaseReturnItem[]
+  SaleItem           SaleItem[]
+  SaleReturnItem     SaleReturnItem[]
+  StockAdjustment    StockAdjustment[]
+  StockMovement      StockMovement[]
+  StockTransferItem  StockTransferItem[]
+  Transaction        Transaction[]
+
+  ManufacturingOrder   ManufacturingOrder[]
+}
+
+model PurchaseDocument {
+  id              String        @id
+  purchaseOrderId String
+  url             String
+  fileType        String?
+  fileName        String?
+  createdAt       DateTime      @default(now())
+  PurchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+}
+
+model PurchaseInvoice {
+  id              String            @id
+  invoiceNumber   String            @unique
+  purchaseOrderId String
+  totalAmount     Float
+  paidAmount      Float             @default(0)
+  status          String            @default("UNPAID")
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime
+  PurchaseOrder   PurchaseOrder     @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  PurchasePayment PurchasePayment[]
+}
+
+model PurchaseOrder {
+  id                   String              @id
+  poNumber             String              @unique
+  status               String              @default("DRAFT")
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime
+  amountDue            Float               @default(0)
+  amountPaid           Float               @default(0)
+  branchId             String?
+  createdBy            String?
+  discountTotal        Float               @default(0)
+  expectedDeliveryDate DateTime?
+  grandTotal           Float               @default(0)
+  gstTotal             Float               @default(0)
+  makingChargesTotal   Float               @default(0)
+  netPayable           Float               @default(0)
+  paymentStatus        String              @default("PENDING")
+  poDate               DateTime            @default(now())
+  remarks              String?
+  roundOff             Float               @default(0)
+  subTotal             Float               @default(0)
+  vendorId             String
+  wastageTotal         Float               @default(0)
+  PurchaseDocument     PurchaseDocument[]
+  PurchaseInvoice      PurchaseInvoice[]
+  Branch               Branch?             @relation(fields: [branchId], references: [id])
+  VendorRecord         VendorRecord        @relation(fields: [vendorId], references: [id])
+  PurchaseOrderItem    PurchaseOrderItem[]
+  PurchaseReturn       PurchaseReturn[]
+}
+
+model PurchaseOrderItem {
+  id              String        @id
+  purchaseOrderId String
+  productId       String
+  quantity        Int
+  receivedQty     Int           @default(0)
+  amount          Float         @default(0)
+  discount        Float         @default(0)
+  grossWeight     Float         @default(0)
+  gst             Float         @default(0)
+  makingCharges   Float         @default(0)
+  netWeight       Float         @default(0)
+  rate            Float         @default(0)
+  remarks         String?
+  stoneWeight     Float         @default(0)
+  wastage         Float         @default(0)
+  Product         Product       @relation(fields: [productId], references: [id])
+  PurchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+}
+
+model PurchasePayment {
+  id              String          @id
+  invoiceId       String
+  amount          Float
+  paymentMode     String
+  reference       String?
+  paymentDate     DateTime        @default(now())
+  PurchaseInvoice PurchaseInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model PurchaseReturn {
+  id                 String               @id
+  returnNumber       String               @unique
+  purchaseOrderId    String
+  returnDate         DateTime             @default(now())
+  totalAmount        Float                @default(0)
+  reason             String?
+  status             String               @default("COMPLETED")
+  createdAt          DateTime             @default(now())
+  PurchaseOrder      PurchaseOrder        @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  PurchaseReturnItem PurchaseReturnItem[]
+}
+
+model PurchaseReturnItem {
+  id             String         @id
+  returnId       String
+  productId      String
+  quantity       Int
+  weight         Float          @default(0)
+  amount         Float          @default(0)
+  Product        Product        @relation(fields: [productId], references: [id])
+  PurchaseReturn PurchaseReturn @relation(fields: [returnId], references: [id], onDelete: Cascade)
+}
+
+model RepairHistory {
+  id          String    @id
+  repairJobId String
+  fromStatus  String?
+  toStatus    String
+  action      String
+  performedBy String?
+  notes       String?
+  snapshot    String?
+  createdAt   DateTime  @default(now())
+  RepairJob   RepairJob @relation(fields: [repairJobId], references: [id], onDelete: Cascade)
+}
+
+model RepairImage {
+  id          String    @id
+  repairJobId String
+  imageUrl    String
+  imageType   String
+  caption     String?
+  uploadedAt  DateTime  @default(now())
+  RepairJob   RepairJob @relation(fields: [repairJobId], references: [id], onDelete: Cascade)
+}
+
+model RepairJob {
+  id                 String               @id
+  jobNumber          String               @unique
+  customerId         String
+  productType        String
+  productDetails     String
+  metal              String?
+  purity             String?
+  grossWeight        Float?
+  issueDescription   String
+  repairType         String
+  assignedTo         String?
+  estimatedCost      Float?               @default(0)
+  finalCost          Float?               @default(0)
+  advancePaid        Float?               @default(0)
+  balanceDue         Float?               @default(0)
+  estimatedDate      DateTime?
+  completedDate      DateTime?
+  deliveredDate      DateTime?
+  status             String               @default("RECEIVED")
+  priority           String               @default("NORMAL")
+  technicianNotes    String?
+  internalNotes      String?
+  customerNotes      String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  RepairHistory      RepairHistory[]
+  RepairImage        RepairImage[]
+  Employee           Employee?            @relation(fields: [assignedTo], references: [id])
+  Customer           Customer             @relation(fields: [customerId], references: [id])
+  RepairNotification RepairNotification[]
+}
+
+model RepairNotification {
+  id          String    @id
+  repairJobId String
+  type        String
+  recipient   String
+  message     String
+  status      String    @default("PENDING")
+  sentAt      DateTime?
+  failReason  String?
+  createdAt   DateTime  @default(now())
+  RepairJob   RepairJob @relation(fields: [repairJobId], references: [id], onDelete: Cascade)
+}
+
+model ReportExport {
+  id          String    @id
+  reportType  String
+  format      String
+  fileUrl     String?
+  status      String    @default("PENDING")
+  requestedBy String?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+}
+
+model ReportTemplate {
+  id            String   @id
+  name          String   @unique
+  layout        String
+  defaultFormat String   @default("PDF")
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime
+}
+
+model SaleInvoice {
+  id              String         @id
+  invoiceNumber   String         @unique
+  customerId      String?
+  subTotal        Float          @default(0)
+  discount        Float          @default(0)
+  gstTotal        Float          @default(0)
+  grandTotal      Float          @default(0)
+  paidAmount      Float          @default(0)
+  status          String         @default("COMPLETED")
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime
+  balanceAmount   Float          @default(0)
+  branchId        String?
+  cashierId       String?
+  oldGoldValue    Float          @default(0)
+  paymentStatus   String         @default("PAID")
+  remarks         String?
+  rewardsRedeemed Float          @default(0)
+  roundOff        Float          @default(0)
+  totalMaking     Float          @default(0)
+  totalWastage    Float          @default(0)
+  GoldExchange    GoldExchange[]
+  Branch          Branch?        @relation(fields: [branchId], references: [id])
+  Customer        Customer?      @relation(fields: [customerId], references: [id])
+  SaleItem        SaleItem[]
+  SalePayment     SalePayment[]
+  SaleReturn      SaleReturn[]
+}
+
+model SaleItem {
+  id            String      @id
+  invoiceId     String
+  productId     String
+  quantity      Int         @default(1)
+  gstRate       Float       @default(3)
+  gstAmount     Float       @default(0)
+  isReturn      Boolean     @default(false)
+  isExchange    Boolean     @default(false)
+  amount        Float       @default(0)
+  discount      Float       @default(0)
+  grossWeight   Float       @default(0)
+  makingCharge  Float       @default(0)
+  metalRate     Float       @default(0)
+  netWeight     Float       @default(0)
+  otherCharge   Float       @default(0)
+  stoneCharge   Float       @default(0)
+  stoneWeight   Float       @default(0)
+  wastageCharge Float       @default(0)
+  SaleInvoice   SaleInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  Product       Product     @relation(fields: [productId], references: [id])
+}
+
+model SalePayment {
+  id          String      @id
+  invoiceId   String
+  amount      Float
+  method      String
+  reference   String?
+  createdAt   DateTime    @default(now())
+  SaleInvoice SaleInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model SaleReturn {
+  id             String           @id
+  returnNumber   String           @unique
+  invoiceId      String
+  customerId     String?
+  branchId       String?
+  totalRefund    Float            @default(0)
+  reason         String?
+  refundMethod   String?
+  status         String           @default("COMPLETED")
+  createdAt      DateTime         @default(now())
+  SaleInvoice    SaleInvoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  SaleReturnItem SaleReturnItem[]
+}
+
+model SaleReturnItem {
+  id           String     @id
+  returnId     String
+  productId    String
+  quantity     Int        @default(1)
+  weight       Float      @default(0)
+  refundAmount Float      @default(0)
+  Product      Product    @relation(fields: [productId], references: [id])
+  SaleReturn   SaleReturn @relation(fields: [returnId], references: [id], onDelete: Cascade)
+}
+
+model SavedReport {
+  id          String   @id
+  name        String
+  description String?
+  category    String
+  filters     String
+  createdBy   String?
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+}
+
+model ScheduledReport {
+  id              String    @id
+  name            String
+  reportType      String
+  frequency       String
+  emailRecipients String
+  format          String    @default("PDF")
+  lastRun         DateTime?
+  nextRun         DateTime?
+  isActive        Boolean   @default(true)
+  createdBy       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime
+}
+
+model StockAdjustment {
+  id           String   @id
+  adjustmentNo String   @unique
+  productId    String
+  branchId     String?
+  type         String
+  quantity     Int
+  reason       String
+  status       String   @default("APPROVED")
+  remarks      String?
+  approvedBy   String?
+  createdAt    DateTime @default(now())
+  Branch       Branch?  @relation(fields: [branchId], references: [id])
+  Product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model StockMovement {
+  id          String   @id
+  productId   String
+  type        String
+  quantity    Int      @default(0)
+  weight      Float    @default(0)
+  referenceId String?
+  reference   String?
+  remarks     String?
+  createdAt   DateTime @default(now())
+  Product     Product  @relation(fields: [productId], references: [id])
+}
+
+model StockTransfer {
+  id                                          String              @id
+  status                                      String              @default("PENDING")
+  remarks                                     String?
+  createdAt                                   DateTime            @default(now())
+  destBranchId                                String
+  sourceBranchId                              String
+  transferDate                                DateTime            @default(now())
+  transferNumber                              String              @unique
+  Branch_StockTransfer_destBranchIdToBranch   Branch              @relation("StockTransfer_destBranchIdToBranch", fields: [destBranchId], references: [id])
+  Branch_StockTransfer_sourceBranchIdToBranch Branch              @relation("StockTransfer_sourceBranchIdToBranch", fields: [sourceBranchId], references: [id])
+  StockTransferItem                           StockTransferItem[]
+}
+
+model StockTransferItem {
+  id            String        @id
+  transferId    String
+  productId     String
+  quantity      Int
+  weight        Float         @default(0)
+  Product       Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  StockTransfer StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+}
+
+model SubscriptionPlan {
+  id           String        @id
+  name         String
+  priceMonthly Float
+  priceYearly  Float
+  maxBranches  Int           @default(1)
+  maxEmployees Int           @default(5)
+  maxProducts  Int           @default(1000)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime
+  FeatureFlag  FeatureFlag[]
+  Tenant       Tenant[]
+}
+
+model SystemSetting {
+  id        String   @id
+  key       String   @unique
+  value     String?
+  category  String
+  updatedAt DateTime
+}
+
+model Tenant {
+  id                 String            @id
+  name               String
+  subdomain          String            @unique
+  domain             String?           @unique
+  subscriptionStatus String            @default("TRIAL")
+  planId             String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime
+  BillingHistory     BillingHistory[]
+  SubscriptionPlan   SubscriptionPlan? @relation(fields: [planId], references: [id])
+  User               User[]
+}
+
+model Transaction {
+  id        String   @id
+  productId String?
+  type      String
+  amount    Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  Product   Product? @relation(fields: [productId], references: [id])
+}
+
+model User {
+  id        String     @id
+  email     String     @unique
+  password  String
+  name      String
+  role      String     @default("STAFF")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime
+  tenantId  String?
+  AuditLog  AuditLog[]
+  Tenant    Tenant?    @relation(fields: [tenantId], references: [id])
+}
+
+model Vendor {
+  id      String    @id
+  name    String
+  contact String?
+  Product Product[]
+}
+
+model VendorLedger {
+  id           String       @id
+  vendorId     String
+  date         DateTime     @default(now())
+  type         String
+  amount       Float
+  balance      Float
+  referenceId  String?
+  description  String?
+  VendorRecord VendorRecord @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+}
+
+model VendorRecord {
+  id                 String          @id
+  vendorCode         String          @unique
+  vendorName         String
+  companyName        String?
+  vendorType         String
+  contactPerson      String?
+  mobile             String          @unique
+  alternateMobile    String?
+  email              String?
+  website            String?
+  gstNumber          String?         @unique
+  panNumber          String?
+  msmeNumber         String?
+  paymentTerms       String?
+  creditLimit        Float           @default(0)
+  openingBalance     Float           @default(0)
+  outstandingBalance Float           @default(0)
+  address            String?
+  city               String?
+  state              String?
+  country            String?         @default("India")
+  pincode            String?
+  bankName           String?
+  accountHolderName  String?
+  accountNumber      String?
+  ifscCode           String?
+  bankBranch         String?
+  notes              String?
+  status             String          @default("ACTIVE")
+  createdBy          String?
+  updatedBy          String?
+  isDeleted          Boolean         @default(false)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime
+  PurchaseOrder      PurchaseOrder[]
+  VendorLedger       VendorLedger[]
+}
+
+
+
+model ManufacturingOrder {
+  id              String             @id @default(uuid())
+  orderNumber     String             @unique
+  orderDate       DateTime           @default(now())
+  expectedDate    DateTime?
+  branchId        String?
+  priority        String             @default("NORMAL")
+  status          String             @default("DRAFT")
+  productId       String?
+  designNumber    String?
+  totalCost       Float              @default(0)
+  totalWeight     Float              @default(0)
+  notes           String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  isDeleted       Boolean            @default(false)
+  
+  Product         Product?           @relation(fields: [productId], references: [id])
+  Items           ManufacturingItem[]
+  Stages          ProductionStage[]
+  Costs           ManufacturingCost[]
+  Wastages        ManufacturingWastage[]
+  Issues          MaterialIssue[]
+  Returns         MaterialReturn[]
+  Assignments     KarigarAssignment[]
+}
+
+model ManufacturingItem {
+  id                   String             @id @default(uuid())
+  manufacturingOrderId String
+  metalType            String?
+  purity               String?
+  grossWeight          Float              @default(0)
+  netWeight            Float              @default(0)
+  stoneQuantity        Int                @default(0)
+  
+  ManufacturingOrder   ManufacturingOrder @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
+}
+
+model MaterialIssue {
+  id                   String             @id @default(uuid())
+  manufacturingOrderId String
+  materialType         String             // GOLD, SILVER, STONE, OTHER
+  metalType            String?
+  purity               String?
+  grossWeight          Float              @default(0)
+  netWeight            Float              @default(0)
+  quantity             Int                @default(1)
+  issueDate            DateTime           @default(now())
+  issuedById           String?
+  receivedById         String?
+  remarks              String?
+  createdAt            DateTime           @default(now())
+  
+  ManufacturingOrder   ManufacturingOrder @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
+}
+
+model MaterialReturn {
+  id                   String             @id @default(uuid())
+  manufacturingOrderId String
+  materialType         String             // GOLD, SILVER, STONE, OTHER
+  returnWeight         Float              @default(0)
+  returnQuantity       Int                @default(1)
+  returnDate           DateTime           @default(now())
+  remarks              String?
+  createdAt            DateTime           @default(now())
+  
+  ManufacturingOrder   ManufacturingOrder @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
+}
+
+model ProductionStage {
+  id                   String             @id @default(uuid())
+  manufacturingOrderId String
+  stageName            String             // DESIGN, WAX, CASTING, FILING, STONE_SETTING, POLISHING, HALLMARK, QC, FINISHED
+  startDate            DateTime?
+  endDate              DateTime?
+  assignedToId         String?
+  completionPercent    Int                @default(0)
+  status               String             @default("PENDING")
+  
+  ManufacturingOrder   ManufacturingOrder @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
+}
+
+model QualityCheck {
+  id                   String             @id @default(uuid())
+  manufacturingOrderId String
+  checkDate            DateTime           @default(now())
+  checkedById          String?
+  weightVerified       Boolean            @default(false)
+  purityVerified       Boolean            @default(false)
+  stoneVerified        Boolean            @default(false)
+  hallmarkVerified     Boolean            @default(false)
+  finishQuality        String?
+  packagingStatus      Boolean            @default(false)
+  status               String             @default("PENDING") // APPROVED, REJECTED, REWORK
+  remarks              String?
+}
+
+model FinishedGoods {
+  id                   String             @id @default(uuid())
+  manufacturingOrderId String             @unique
+  productId            String?
+  sku                  String?            @unique
+  barcode              String?            @unique
+  qrCode               String?            @unique
+  grossWeight          Float              @default(0)
+  netWeight            Float              @default(0)
+  readyDate            DateTime           @default(now())
+}
+
+model ManufacturingCost {
+  id                   String             @id @default(uuid())
+  manufacturingOrderId String
+  costType             String             // MATERIAL, LABOUR, STONE, MAKING, OVERHEAD, GST
+  amount               Float              @default(0)
+  notes                String?
+  
+  ManufacturingOrder   ManufacturingOrder @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
+}
+
+model ManufacturingWastage {
+  id                   String             @id @default(uuid())
+  manufacturingOrderId String
+  materialType         String
+  lossType             String             // DUST, MELTING, OTHER
+  lossWeight           Float              @default(0)
+  recoveryWeight       Float              @default(0)
+  lossPercent          Float              @default(0)
+  costImpact           Float              @default(0)
+  
+  ManufacturingOrder   ManufacturingOrder @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
+}
+
+model KarigarAssignment {
+  id                   String             @id @default(uuid())
+  manufacturingOrderId String
+  karigarId            String
+  assignedDate         DateTime           @default(now())
+  expectedCompletion   DateTime?
+  notes                String?
+  status               String             @default("ACTIVE")
+  
+  ManufacturingOrder   ManufacturingOrder @relation(fields: [manufacturingOrderId], references: [id], onDelete: Cascade)
+  Karigar              Karigar            @relation(fields: [karigarId], references: [id], onDelete: Cascade)
+}

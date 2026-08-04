@@ -1,0 +1,1 @@
+const bcrypt = require('bcryptjs'); const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); bcrypt.hash('password', 10).then(hashed => prisma.user.update({where: {email: 'admin123@gmail.com'}, data: {password: hashed}}).then(() => console.log('Done'))).catch(console.error);

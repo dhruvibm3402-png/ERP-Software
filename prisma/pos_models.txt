@@ -1,0 +1,59 @@
+
+model SaleInvoice {
+  id              String   @id @default(cuid())
+  invoiceNumber   String   @unique
+  customerId      String?
+  customer        Customer? @relation(fields: [customerId], references: [id])
+  
+  subTotal        Float
+  discount        Float    @default(0)
+  gstTotal        Float    @default(0)
+  grandTotal      Float
+  paidAmount      Float    @default(0)
+  
+  status          String   @default("PAID") // PAID, PARTIAL, REFUNDED
+  
+  items           SaleItem[]
+  payments        SalePayment[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model SaleItem {
+  id              String   @id @default(cuid())
+  invoiceId       String
+  invoice         SaleInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id])
+  quantity        Int
+  unitPrice       Float
+  makingCharges   Float    @default(0)
+  wastage         Float    @default(0)
+  gstRate         Float    @default(3)
+  gstAmount       Float    @default(0)
+  totalPrice      Float    
+  
+  isReturn        Boolean  @default(false)
+  isExchange      Boolean  @default(false)
+}
+
+model SalePayment {
+  id              String   @id @default(cuid())
+  invoiceId       String
+  invoice         SaleInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount          Float
+  method          String   // CASH, CARD, UPI, BANK
+  reference       String?  
+  createdAt       DateTime @default(now())
+}
+
+model AccountingEntry {
+  id              String   @id @default(cuid())
+  type            String   // CREDIT, DEBIT
+  category        String   // SALES, RETURN, EXPENSE, TAX
+  amount          Float
+  description     String?
+  referenceId     String?  // Invoice ID
+  createdAt       DateTime @default(now())
+}
